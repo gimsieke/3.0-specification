@@ -62,7 +62,7 @@
       <tocentry role="section" xml:id="f.document-properties">Document properties</tocentry>
       <tocentry role="section" xml:id="f.document-properties-document">Document properties document</tocentry>
       <tocentry role="section" xml:id="f.document-property">Document property</tocentry>
-      <tocentry role="section" xml:id="f.urify">Transform filesystem paths into URIs</tocentry>
+      <tocentry role="section" xml:id="f.urify">Transform file system paths into URIs and normalize URIs</tocentry>
       <tocentry role="section" xml:id="f.function-library-importable">Function library importable</tocentry>
       <tocentry role="section" xml:id="other-xpath-extension-functions">Other XPath Extension Functions</tocentry>
    </tocdiv>
