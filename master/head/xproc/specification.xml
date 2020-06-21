@@ -681,11 +681,14 @@ etc.
 </section>
 </section>
 
-    <section>
+    <section xml:id="creating-documents-from-xdm-step-results">
       <title>Creating documents from XDM step results</title>
       <para>Some steps like <tag>p:xslt</tag>, <tag>p:xquery</tag> etc. create a sequence of new XDM
-        instances. Values in such a sequence can be of any XDM type (except attribute). Every item in such a sequence is converted into a <emphasis>separate</emphasis>
-        document that will appear on the output port of that particular step. The following rules
+        instances. The same is true for the result of a <code>select</code> expression on
+          <tag>p:with-input</tag>. Values in such a sequence can be of any XDM type (except
+        attribute or function). Every item in such a sequence is converted into a <emphasis>separate</emphasis>
+        document that will appear on the output port of that particular step or as the result of the 
+        <tag>p:with-input</tag>. The following rules
         apply to each of the items in the output sequence:</para>
       <itemizedlist>
         <listitem>
@@ -783,7 +786,11 @@ The following shortcuts <rfc2119>must</rfc2119> be supported by the processor:</
 </listitem>
 </itemizedlist>
 
-<para><impl>It is <glossterm>implementation-defined</glossterm> if a processor accepts any other content type shortcuts.</impl>
+  <para><error code="D0079">It is a <glossterm>dynamic error</glossterm> if a supplied content-type is not 
+    a valid media type of the form 
+    “<literal><replaceable>type</replaceable>/<replaceable>subtype</replaceable>+<replaceable>ext</replaceable></literal>” 
+    or “<literal><replaceable>type</replaceable>/<replaceable>subtype</replaceable></literal>”.</error>
+  <impl>It is <glossterm>implementation-defined</glossterm> if a processor accepts any other content type shortcuts.</impl>
 <error code="S0111">It is a <glossterm>static error</glossterm> if an unrecognized content type shortcut is specified.</error>
 </para>
 
@@ -1261,7 +1268,7 @@ as they are available statically.</para>
   &lt;p:option name="A" static="true" select="5"/&gt;
   &lt;p:option name="B" static="true" select="$A + count(//*)"&gt;
     &lt;p:document href="doc.xml"/&gt;
-  &lt;/p:variable&gt;
+  &lt;/p:option&gt;
   &lt;p:variable name="D" select="count(//*)"/&gt;
 
   …
@@ -2153,16 +2160,18 @@ static analysis is <glossterm>implementation-defined</glossterm>.</impl></para>
               specification</link>.</termdef></para>
         </listitem>
         <listitem>
+          <para>All steps that explicitly behave like the <tag>p:identity</tag> step under
+          some circumstances must preserve PSVI properties under those circumstances.
+          In this specifications, those steps are <tag>p:if</tag> when the condition is false
+          and <tag>p:choose</tag> when no subpipline is selected.</para>
+        </listitem>
+        <listitem>
           <para>Except as specified above, or in the descriptions of individual steps,
             implementations <rfc2119>must not</rfc2119> include PSVI properties in the outputs of
-            steps defined by this specification. <impl>It is
+            steps. 
+            <impl>It is
                 <glossterm>implementation-defined</glossterm> what PSVI properties, if any, are
               produced by extension steps.</impl></para>
-          <para>The exceptions in the standard XProc steps are the
-              <tag>p:validate-with-xml-schema</tag>, <tag>p:validate-with-relax-ng</tag>, and
-              <tag>p:validate-with-schematron</tag> steps, <tag>p:xslt</tag> (when XSLT 2.0 is
-            used), <tag>p:xquery</tag>, <tag>p:identity</tag>, and <tag>p:split-sequence</tag>.
-          </para>
         </listitem>
       </orderedlist>
       <note xml:id="note-psvi">
@@ -3185,7 +3194,7 @@ For convenience, they are all summarized here.</para>
 </listitem>
 </itemizedlist>
 
-<para>The remaining elements are sometimes in no namespace and sometimes
+<para>The remaining attributes are sometimes in no namespace and sometimes
 explicitly in the XProc namespace. They are in no namespace when they
 appear on an XProc element; they are in the XProc namespace when they
 are on an element in any other namespace. In this way, they do not
@@ -3803,8 +3812,8 @@ the source document is wrapped in a document node, as necessary, and
 provided, one at a time, to the viewport’s
 <glossterm>subpipeline</glossterm> on a port named
 <port>current</port>. The base URI of the resulting document that is
-passed to the subpipeline is the base URI of the matched element or
-document. <error code="D0010">It is a <glossterm>dynamic
+passed to the subpipeline is the base URI of the matched node.
+<error code="D0010">It is a <glossterm>dynamic
 error</glossterm> if the <tag class="attribute">match</tag> expression
 on <tag>p:viewport</tag> matches an attribute or a namespace node.</error></para>
 
@@ -4491,6 +4500,18 @@ is an opportunity for the step to identify the error in a
 machine-processable fashion. Many steps omit this because they do not
 include the concept of errors identified by EQNames.</para>
 
+<para>The <tag class="attribute">cause</tag> is an EQName which
+identifies an underlying error, if applicable. As an aide to
+interoperability, this specification mandates particular error codes
+for conditions that can arise in a variety of ways. For example,
+<code>err:XD0050</code> is raised for all errors in XPath expressions
+in value templates. The implementation may use
+<tag class="attribute">cause</tag> to record an underlying error (for
+example, the XPath error code).
+<impl>The error codes that appear in <tag class="attribute">cause</tag>
+are
+<glossterm>implementation-dependent</glossterm>.</impl></para>
+
 <para>If the error was caused by a specific document, or by the
 location of some erroneous construction in a specific document, the
 <tag class="attribute">href</tag>, <tag class="attribute">line</tag>,
@@ -4843,16 +4864,16 @@ undefined.</error></para>
 </varlistentry>
 <varlistentry><term><tag class="attribute">select</tag></term>
 <listitem>
-<para>A <tag class="attribute">select</tag> expression
-<rfc2119>may</rfc2119> also be provided with a connection.
-The <tag class="attribute">select</tag> expression, if specified, applies the
-specified XPath select expression to the document(s) that are read.</para>
+            <para>A <tag class="attribute">select</tag> expression <rfc2119>may</rfc2119> also be
+              provided with a connection. The <tag class="attribute">select</tag> expression, if
+              specified, applies the specified XPath select expression to the document(s) that are
+              read. </para>
+            <para>The result of this is a sequence of items. The rules as stated in <xref linkend="creating-documents-from-xdm-step-results"/> will be applied to the members
+              of this sequence and will turn these into separate documents. <error code="D0016">It is a
+                <glossterm>dynamic error</glossterm> if the select expression on a <tag>p:input</tag> or
+                <tag>p:with-input</tag> returns attribute nodes or function items.</error></para>
 
-<para>If the result from applying the select expression to the document(s) is
- an atomic value, a text node with the corresponding string value is created.</para>
-
-  <para>Each selected node is wrapped in a document (unless it is a document)
-and provided to the input port. In other words,</para>
+  <para>For example:</para>
 
 <programlisting language="xml">&lt;p:with-input port="source"&gt;
   &lt;p:document href="http://example.org/input.html"/&gt;
@@ -4882,13 +4903,6 @@ port of the step named <literal>origin</literal>.</para>
 expression is the base URI of the matched element or document. The document
 does not have a base URI if it results from selecting an atomic value.</para>
 
-<para>If a document constructed by selection consists exclusively of
-text nodes, then it has a content type of
-<literal>text/plain</literal>, otherwise it has a content type of
-<literal>application/xml</literal>. If the selection result is a map or
-  an array or an atomic value, it is a JSON document. <error code="D0016">It is a
-<glossterm>dynamic error</glossterm> if the select expression on a p:input or
-p:with-input returns attribute nodes or function items.</error></para>
 </listitem>
 </varlistentry>
 <varlistentry><term><tag class="attribute">href</tag></term>
@@ -5230,7 +5244,7 @@ document</emphasis> and provide it on the output port. It
         </listitem>
         <listitem>
           <para>Parameter <literal>omit-xml-declaration</literal> is set to
-            <literal>true</literal>.</para>
+            <literal>false</literal>.</para>
         </listitem>
       </itemizedlist>
       
@@ -5250,9 +5264,7 @@ document</emphasis> and provide it on the output port. It
           <para>The <code>encoding</code> must support the value <code>UTF-8</code>.</para>
         </listitem>
         <listitem>
-          <para>The <code>omit-xml-declaration</code> must be supported. If the value is not
-            specified or has the value <code>no</code>, an XML declaration must be
-            produced.</para>
+          <para>The <code>omit-xml-declaration</code> must be supported.</para>
         </listitem>
       </itemizedlist>
       
@@ -5355,20 +5367,6 @@ no effect.
 the context item is undefined. All of the documents that appear on the
 connection for the <tag>p:variable</tag> will be available as the
 default collection within <tag class="attribute">select</tag> expression.</para>
-</listitem>
-</varlistentry>
-
-<varlistentry><term><tag class="attribute">visibility</tag></term>
-<listitem>
-<para>If the <tag>p:variable</tag> is a child of a <tag>p:library</tag>,
-the <tag class="attribute">visibility</tag> attribute controls whether
-the variable is visible to an importing pipeline. If
-<tag class="attribute">visibility</tag> is set to “<literal>private</literal>”,
-the variable is visible inside the <tag>p:library</tag> but not visible to
-any pipeline importing the <tag>p:library</tag>. If the visibility attribute is
-missing, “<literal>public</literal>” is assumed. If the <tag>p:variable</tag> is not a child 
-of <tag>a p:library</tag> the attribute has no effect and is ignored.
-</para>
 </listitem>
 </varlistentry>
 
@@ -5520,10 +5518,9 @@ which will be evaluated to provide the default value for the option.
 </para>
 
 <para>The default value of an option is specified with an XPath
-expression on the <tag>p:declare-step</tag> that defines the step
-signature. It must be a statically valid expression at that point.
-Consequently, if it contains variable references, they can only be
-references to preceding options on the step or to in-scope static variables.
+expression. It must be a statically valid expression at that point.
+Consequently, if it contains option references, these can only be
+references to preceding non-static options on the step or to in-scope static options.
 <error code="D0001">It is a <glossterm>dynamic error</glossterm> if an
 XPath expression makes reference to the context item, size, or position when
 the context item is undefined.</error></para>
@@ -6865,7 +6862,9 @@ readable port then the context item is undefined.</para>
             <varlistentry>
               <term>context position and context size</term>
               <listitem>
-                <para>The context position and context size are both “1”. </para>
+          <para>If the context item is defined, the context position and context size are both “1”.
+              <error code="D0001">It is a <glossterm>dynamic error</glossterm> to refer to the
+              context position or size if the context item is undefined.</error></para>
               </listitem>
             </varlistentry>
             <varlistentry>
@@ -7458,10 +7457,8 @@ they are <firstterm>visible</firstterm> to each other.</para></glossdef></glosse
 descriptions of this language are available in
 <link xlink:href="schemas/xproc.rng">RELAX NG</link> (and the
 RELAX NG 
-<link xlink:href="schemas/xproc.rnc">compact syntax</link>),
-<link xlink:href="schemas/xproc.xsd">W3C XML Schema</link>,
-and 
-<link xlink:href="schemas/xproc.dtd">DTD</link> syntaxes.</para>
+<link xlink:href="schemas/xproc.rnc">compact syntax</link>).
+</para>
 
 <?syntax-summary?>
 
@@ -8041,7 +8038,25 @@ who contributed to this document and all of the versions that came before it.</p
 
 <appendix xml:id="changelog">
 <title>Change Log</title>
-<para>This appendix catalogs non-editorial changes made after the
+  <para>This list contains the non-editorial changes made after the
+    December 2019
+    “<link xlink:href="https://spec.xproc.org/lastcall-2019-12/head/xproc/">last call</link>”
+    draft:</para>
+  
+  <itemizedlist>
+    <listitem>
+      <para>The <code>visibility</code> attribute of <tag>p:variable</tag> was removed.</para>
+    </listitem>
+    <listitem>
+        <para>The description of the <code>select</code> attribute of <tag>p:option</tag> no longer
+          mentions static variables.</para>
+    </listitem>
+    <listitem>
+      <para>Error XD0079 added for defective content-types. (Was XS0070 or XS00130).</para>
+    </listitem>
+  </itemizedlist>
+  
+<para>This list contains the non-editorial changes made after the
 February 2019
 “<link xlink:href="http://spec.xproc.org/lastcall-2019-02/head/xproc/">last call</link>”
 draft:</para>
@@ -8124,6 +8139,22 @@ draft:</para>
       <listitem>
         <para>Updated the description of the <tag class="attribute">select</tag> attribute for <tag>p:input</tag>
         so that it is in line with the more recent changes that have been applied to <tag>p:with-input</tag>.</para>
+      </listitem>
+      <listitem>
+        <para>Changed description of <tag>p:viewport</tag> stating that the base URI of every matched node is the
+        document's base URI, not just for document and element nodes.</para>
+      </listitem>
+      <listitem>
+        <para>Changed the default value for serialization property <literal>omit-xml-declaration</literal>
+          from <literal>true</literal> to <literal>false</literal> in section “Serialization method” . Removed
+          remark about default settings for this parameter from section “Minimal conformance”.</para>
+      </listitem>
+      <listitem>
+        <para>Clarified the conditions under which steps may produce PSVI annotations.</para>
+      </listitem>
+      <listitem>
+        <para>Added a <tag class="attribute">cause</tag> attribute to the error vocabulary 
+         for recording the error codes of underlying errors.</para>
       </listitem>
     </itemizedlist>
 </appendix>
